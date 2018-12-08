@@ -1,20 +1,32 @@
 import itertools, nltk, string, re
-from collections import defaultdict
 import time
 import errno
 import os
 import warnings
+import argparse
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import wordnet
+from collections import defaultdict
 
 relevant_pos_tags = {'JJ', 'JJR', 'JJS', 'NN', 'NNP', 'NNS', 'NNPS'}
 
+def parse_args(args=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", type=str, help="Input the filename of file containing raw text")
+    parser.add_argument("--min_jumps", type=int, default=10, help="Elimination value for words with least frequency")
+    parser.add_argument("--max_jumps", type=int, default=1, help="Elimination value for words with highest frequency")
+    parser.add_argument("--threshold", type=int, default=10, help="Threshold for frequency distance between least and most occuring words")
+    parser.add_argument("--toChunk", type=int, default=0, help="Chunking -- Integer input 0 - False, 1 - True")
+    parser.add_argument("--lemmatize", type=int, default=0, help="Lemmatization -- Integer input 0 - False, 1 - True")
+    parser.add_argument("--debug", type=bool, default=False)
+    return parser.parse_args(args=args)
+
 
 class KeywordExtractor():
-    def __init__(self, max_jumps=1, min_jumps=10, max_required=7, min_required=3):
+    def __init__(self, max_jumps=1, min_jumps=10, max_required=7, min_required=3, freq_distance = 10):
         self.max_jumps = max_jumps
         self.min_jumps = min_jumps
-        self.freq_distance = 10
+        self.freq_distance = freq_distance
         self.max_required = max_required
         self.min_required = min_required
         self.existing_data_ = False
@@ -220,6 +232,7 @@ class KeywordExtractor():
             tok = all_chunks[i][0].lower()
             tag = all_chunks[i][1]
             iob_tag = all_chunks[i][2]
+            # only lowering for the original frequency map
             original_freq_map[tok] += 1
             if iob_tag == 'O':
                 if tag in relevant_pos_tags:
@@ -352,8 +365,28 @@ class KeywordExtractor():
         return original_freq_map, relevant_freq_map, first_position_map, inv_freq_map
 
 
-file_n = "C:/My_Main/MS_Umass/SoundHound/keyword_final_dataset/fao30/documents/a0011e00.txt"
 
-k = KeywordExtractor(min_jumps=10)
-k.perform_term_extraction(filepath=file_n, toChunk=False, lemmatize=False, debug=True, print_output=True)
-# k.perform_term_extraction(reuse=True, re_process=True)
+
+if __name__=="__main__":
+    args = parse_args()
+    toChunk = args.toChunk
+    lemmatize = args.lemmatize
+    file_n = args.file
+    debug = args.debug
+    min_jumps= args.min_jumps
+    max_jumps = args.max_jumps
+    threshold = args.threshold
+    print("Elimination ratio min:", min_jumps, "Max:", max_jumps)
+    if toChunk==0:
+        toChunk = False
+    else:
+        toChunk = True
+    if lemmatize == 0:
+        lemmatize = False
+    else:
+        lemmatize = True
+    k = KeywordExtractor(min_jumps=min_jumps, max_jumps=max_jumps, freq_distance=threshold)
+    k.perform_term_extraction(filepath=file_n, toChunk=toChunk, lemmatize=lemmatize, debug=debug, print_output=True)
+    # file_n = "C:/My_Main/MS_Umass/SoundHound/keyword_final_dataset/fao30/documents/a0011e00.txt"
+    # k.perform_term_extraction(filepath=file_n, toChunk=True, lemmatize=True, debug=True, print_output=True)
+    # print("OK")
